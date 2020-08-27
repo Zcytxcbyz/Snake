@@ -438,14 +438,8 @@ bool AutoObstacle(CPoint front)
         mtx.lock();
         GameRunning = false;
         mtx.unlock();
-        CString str;
-        str.Format(_T("游戏结束。分数: %d"), MarkNum);
-        int MBRESULT = MessageBox(NULL, str, _T("贪吃蛇"), MB_OK);
-        if (MBRESULT == IDOK) 
-        {
-            std::thread t(Reset);
-            t.detach();
-        }
+        std::thread t(Reset);
+        t.detach();
         return true;
     }
     return false;
@@ -579,21 +573,27 @@ void Right()
 
 void Reset()
 {
-    free(PixelsMatrix);
-    MarkNum = 0;
-    FoodData.clear();
-    SnakeBody.clear();
-    srand(time(0));
-	Initializate();
-	GameRunning = true;
-	std::thread tpaint(Paint);
-	tpaint.detach();
-	std::thread tmove(Move);
-	tmove.detach();
-	std::thread tfods(FoodDataSet);
-	tfods.detach();
-	std::thread tfood(FoodGen);
-	tfood.detach();
+	CString str;
+	str.Format(_T("游戏结束。分数: %d"), MarkNum);
+	int MBRESULT = MessageBox(NULL, str, _T("贪吃蛇"), MB_OK);
+    if (MBRESULT == IDOK)
+    {
+        free(PixelsMatrix);
+        MarkNum = 0;
+        FoodData.clear();
+        SnakeBody.clear();
+        srand(time(0));
+        Initializate();
+        GameRunning = true;
+        std::thread tpaint(Paint);
+        tpaint.detach();
+        std::thread tmove(Move);
+        tmove.detach();
+        std::thread tfods(FoodDataSet);
+        tfods.detach();
+        std::thread tfood(FoodGen);
+        tfood.detach();
+    }
 }
 
 LONG WINAPI MyUnhandledExceptionFilter(EXCEPTION_POINTERS* exp)
