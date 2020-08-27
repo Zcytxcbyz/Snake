@@ -291,6 +291,11 @@ void Paint()
         DeleteObject(bmp);
         Sleep(13);
     }
+    if (GameRunning) 
+    {
+        std::thread t(Paint);
+        t.detach();
+    }
 }
 
 void Food()
@@ -374,6 +379,11 @@ void Move()
         mtx.unlock();
         Sleep(250);
     }
+	if (GameRunning)
+	{
+		std::thread t(Move);
+		t.detach();
+	}
 }
 
 CPoint GetFront()
