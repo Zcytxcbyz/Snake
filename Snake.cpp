@@ -46,6 +46,7 @@ void                Down();
 void                Left();
 void                Right();
 void                Reset();
+LONG WINAPI         MyUnhandledExceptionFilter(EXCEPTION_POINTERS* exp);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -58,6 +59,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_SNAKE, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
+
+    SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
 
     if (!InitInstance (hInstance, nCmdShow))
     {
@@ -575,7 +578,7 @@ void Right()
 
 void Reset()
 {
-    PixelsMatrix = NULL;
+    free(PixelsMatrix);
     MarkNum = 0;
     FoodData.clear();
     SnakeBody.clear();
@@ -590,5 +593,11 @@ void Reset()
 	tfods.detach();
 	std::thread tfood(FoodGen);
 	tfood.detach();
+}
+
+LONG WINAPI MyUnhandledExceptionFilter(EXCEPTION_POINTERS* exp)
+{
+    FatalAppExit(0, _T("An unknown error occurred."));
+    return EXCEPTION_EXECUTE_HANDLER;
 }
 
