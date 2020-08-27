@@ -22,8 +22,8 @@ CRect ClientRect;
 int** PixelsMatrix;
 int PixelsMatrixWidth, PixelsMatrixHeight;
 int MarkNum = 0;
-int FoodCount = 0;
 std::deque<CPoint> SnakeBody;
+std::list<CPoint> FoodData;
 enum class Direction { up, down, left, right };
 bool GameRunning = false;
 std::mutex mtx;
@@ -31,13 +31,14 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 void                Paint();
-void                Food();
+void                FoodGen();
+void                FoodDataSet();
 void                Initializate();
 void                Move();
 CPoint              GetFront();
 CPoint              GetBack();
 int*                GetPointPtr(CPoint);
-bool                AutoObstacle(CPoint, CPoint);
+bool                AutoObstacle(CPoint);
 Direction           GetDirection();
 void                Front();
 void                Up();
@@ -149,6 +150,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             tpaint.detach();
             std::thread tmove(Move);
             tmove.detach();
+			std::thread tfods(FoodDataSet);
+			tfods.detach();
+            std::thread tfood(FoodGen);
+            tfood.detach();
         }
         break;
         default:
@@ -291,33 +296,55 @@ void Paint()
         DeleteObject(bmp);
         Sleep(13);
     }
-    if (GameRunning) 
-    {
-        std::thread t(Paint);
-        t.detach();
-    }
 }
 
-void Food()
+void FoodGen()
 {
-    if (FoodCount != 0) return;
-    int count = rand() % 5 + 1;
-    for (int i = 0; i < count; ++i) 
+    while (GameRunning) 
     {
-		int x = rand() % (PixelsMatrixWidth - 1) + 1;
-		int y = rand() % (PixelsMatrixHeight - 1) + 1;
-		while (PixelsMatrix[y][x] != NULL)
-		{
-			x = rand() % (PixelsMatrixWidth - 1) + 1;
-			y = rand() % (PixelsMatrixHeight - 1) + 1;
-		}
-        mtx.lock();
-		PixelsMatrix[y][x] = FOOD;
-        ++FoodCount;
-        mtx.unlock();
+        if (FoodData.empty())
+        {
+            int count = rand() % 5 + 1;
+            for (int i = 0; i < count; ++i)
+            {
+                int x = rand() % (PixelsMatrixWidth - 1) + 1;
+                int y = rand() % (PixelsMatrixHeight - 1) + 1;
+                while (PixelsMatrix[y][x] != NULL)
+                {
+                    x = rand() % (PixelsMatrixWidth - 1) + 1;
+                    y = rand() % (PixelsMatrixHeight - 1) + 1;
+                }
+                mtx.lock();
+                PixelsMatrix[y][x] = FOOD;
+                FoodData.push_back(CPoint(x, y));
+                mtx.unlock();
+            }
+        }
     }
 }
-
+void FoodDataSet() 
+{
+    while (GameRunning)
+    {
+        for (auto iter = FoodData.begin(); iter != FoodData.end(); )
+        {
+            if (PixelsMatrix[iter->y][iter->x] != FOOD)
+            {
+                mtx.lock();
+                FoodData.erase(iter++);
+                ++MarkNum;
+                CPoint pback = GetBack();
+                SnakeBody.push_back(pback);
+                *GetPointPtr(pback) = SNAKE;
+                mtx.unlock();
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+    }
+}
 void Initializate()
 {
     PixelsMatrix = new int* [PixelsMatrixHeight];
@@ -360,8 +387,6 @@ void Initializate()
     {
         PixelsMatrix[iter->y][iter->x] = SNAKE;
     }
-	std::thread t(Food);
-	t.detach();
 }
 
 void Move()
@@ -370,7 +395,7 @@ void Move()
     {
         CPoint pfront = GetFront();
         CPoint pback = SnakeBody.back();
-        if (AutoObstacle(pfront, pback)) return;
+        if (AutoObstacle(pfront)) return;
         mtx.lock();
         *GetPointPtr(pfront) = SNAKE;
         *GetPointPtr(pback) = NULL;
@@ -379,11 +404,6 @@ void Move()
         mtx.unlock();
         Sleep(250);
     }
-	if (GameRunning)
-	{
-		std::thread t(Move);
-		t.detach();
-	}
 }
 
 CPoint GetFront()
@@ -405,7 +425,7 @@ int* GetPointPtr(CPoint point)
     return &PixelsMatrix[(int)point.y][(int)point.x];
 }
 
-bool AutoObstacle(CPoint front, CPoint back)
+bool AutoObstacle(CPoint front)
 {
     int* pfront = GetPointPtr(front);
     if (*pfront == SNAKE || *pfront == WALL) 
@@ -423,17 +443,6 @@ bool AutoObstacle(CPoint front, CPoint back)
             Reset();
         }
         return true;
-    }
-    else if (*pfront == FOOD) 
-    {
-        mtx.lock();
-		*GetPointPtr(back) = SNAKE;
-        SnakeBody.push_back(back);
-        ++MarkNum;
-        --FoodCount;
-        mtx.unlock();
-        std::thread t(Food);
-        t.detach();
     }
     return false;
 }
@@ -482,7 +491,7 @@ void Up()
     {
 		CPoint pfront = CPoint(SnakeBody.front().x, SnakeBody.front().y - 1);
 		CPoint pback = SnakeBody.back();
-        if (AutoObstacle(pfront, pback)) return;
+        if (AutoObstacle(pfront)) return;
         mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
@@ -504,7 +513,7 @@ void Down()
 	{
 		CPoint pfront = CPoint(SnakeBody.front().x, SnakeBody.front().y + 1);
 		CPoint pback = SnakeBody.back();
-        if (AutoObstacle(pfront, pback)) return;
+        if (AutoObstacle(pfront)) return;
         mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
@@ -526,7 +535,7 @@ void Left()
 	{
         CPoint pfront = CPoint(SnakeBody.front().x - 1, SnakeBody.front().y);
 		CPoint pback = SnakeBody.back();
-        if (AutoObstacle(pfront, pback)) return;
+        if (AutoObstacle(pfront)) return;
         mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
@@ -548,7 +557,7 @@ void Right()
 	{
 		CPoint pfront = CPoint(SnakeBody.front().x + 1, SnakeBody.front().y);
 		CPoint pback = SnakeBody.back();
-        if (AutoObstacle(pfront, pback)) return;
+        if (AutoObstacle(pfront)) return;
         mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
@@ -568,7 +577,7 @@ void Reset()
 {
     PixelsMatrix = NULL;
     MarkNum = 0;
-    FoodCount = 0;
+    FoodData.clear();
     SnakeBody.clear();
     srand(time(0));
 	Initializate();
@@ -577,5 +586,9 @@ void Reset()
 	tpaint.detach();
 	std::thread tmove(Move);
 	tmove.detach();
+	std::thread tfods(FoodDataSet);
+	tfods.detach();
+	std::thread tfood(FoodGen);
+	tfood.detach();
 }
 

@@ -8,6 +8,7 @@
 #include <tchar.h>
 #include <time.h>
 #include <deque>
+#include <list>
 #include <thread>
 #include <mutex>
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS
