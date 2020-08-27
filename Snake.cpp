@@ -323,6 +323,7 @@ void FoodGen()
                 mtx.unlock();
             }
         }
+        Sleep(100);
     }
 }
 void FoodDataSet() 
@@ -346,6 +347,7 @@ void FoodDataSet()
                 ++iter;
             }
         }
+        Sleep(100);
     }
 }
 void Initializate()
