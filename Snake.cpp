@@ -501,6 +501,7 @@ void Reset()
     MarkNum = 0;
     FoodCount = 0;
     SnakeBody.clear();
+    srand(time(0));
 	Initializate();
 	GameRunning = true;
 	std::thread tpaint(Paint);
