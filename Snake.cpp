@@ -1,6 +1,7 @@
 ﻿#include "framework.h"
 #include "Snake.h"
 
+
 #define ALLOWACCELERATE 0
 #define MAX_LOADSTRING 100
 #define BLOCKSIZE 10
@@ -25,7 +26,7 @@ int FoodCount = 0;
 std::deque<CPoint> SnakeBody;
 enum class Direction { up, down, left, right };
 bool GameRunning = false;
-
+std::mutex mtx;
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -161,14 +162,54 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
 			switch (wParam)
 			{
-			case VK_UP: Up(); break;
-			case VK_DOWN: Down(); break;
-			case VK_LEFT: Left(); break;
-			case VK_RIGHT: Right(); break;
-			case 'W': Up(); break;
-			case 'S': Down(); break;
-			case 'A': Left(); break;
-			case 'D': Right(); break;
+            case VK_UP: 
+            {
+                std::thread t(Up); 
+                t.detach();
+            } 
+            break;
+			case VK_DOWN: 
+            {
+				std::thread t(Down);
+				t.detach();
+			}
+            break;
+			case VK_LEFT:
+			{
+				std::thread t(Left);
+				t.detach();
+			}
+            break;
+			case VK_RIGHT:
+			{
+				std::thread t(Right);
+				t.detach();
+			}
+            break;
+			case 'W':
+			{
+				std::thread t(Up);
+				t.detach();
+			}
+            break;
+			case 'S':
+			{
+				std::thread t(Down);
+				t.detach();
+			}
+            break;
+			case 'A':
+			{
+				std::thread t(Left);
+				t.detach();
+			}
+            break;
+			case 'D':
+			{
+				std::thread t(Right);
+				t.detach();
+			}
+            break;
 			}
         }
     }
@@ -265,8 +306,10 @@ void Food()
 			x = rand() % (PixelsMatrixWidth - 1) + 1;
 			y = rand() % (PixelsMatrixHeight - 1) + 1;
 		}
+        mtx.lock();
 		PixelsMatrix[y][x] = FOOD;
         ++FoodCount;
+        mtx.unlock();
     }
 }
 
@@ -312,7 +355,8 @@ void Initializate()
     {
         PixelsMatrix[iter->y][iter->x] = SNAKE;
     }
-    Food();
+	std::thread t(Food);
+	t.detach();
 }
 
 void Move()
@@ -322,10 +366,12 @@ void Move()
         CPoint pfront = GetFront();
         CPoint pback = SnakeBody.back();
         if (AutoObstacle(pfront, pback)) return;
+        mtx.lock();
         *GetPointPtr(pfront) = SNAKE;
         *GetPointPtr(pback) = NULL;
         SnakeBody.push_front(pfront);
         SnakeBody.pop_back();
+        mtx.unlock();
         Sleep(250);
     }
 }
@@ -356,7 +402,9 @@ bool AutoObstacle(CPoint front, CPoint back)
     {
         KillTimer(m_hWnd, IDC_MOVETIMER);
         KillTimer(m_hWnd, IDC_DRAWTIMER);
+        mtx.lock();
         GameRunning = false;
+        mtx.unlock();
         CString str;
         str.Format(_T("游戏结束。分数: %d"), MarkNum);
         int MBRESULT = MessageBox(NULL, str, _T("贪吃蛇"), MB_OK);
@@ -368,11 +416,14 @@ bool AutoObstacle(CPoint front, CPoint back)
     }
     else if (*pfront == FOOD) 
     {
+        mtx.lock();
 		*GetPointPtr(back) = SNAKE;
         SnakeBody.push_back(back);
         ++MarkNum;
         --FoodCount;
-        Food();
+        mtx.unlock();
+        std::thread t(Food);
+        t.detach();
     }
     return false;
 }
@@ -422,10 +473,12 @@ void Up()
 		CPoint pfront = CPoint(SnakeBody.front().x, SnakeBody.front().y - 1);
 		CPoint pback = SnakeBody.back();
         if (AutoObstacle(pfront, pback)) return;
+        mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
         SnakeBody.push_front(pfront);
 		SnakeBody.pop_back();
+        mtx.unlock();
     }
 #if ALLOWACCELERATE
     else if (GetDirection() == Direction::up) 
@@ -442,10 +495,12 @@ void Down()
 		CPoint pfront = CPoint(SnakeBody.front().x, SnakeBody.front().y + 1);
 		CPoint pback = SnakeBody.back();
         if (AutoObstacle(pfront, pback)) return;
+        mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
         SnakeBody.push_front(pfront);
 		SnakeBody.pop_back();
+        mtx.unlock();
 	}
 #if ALLOWACCELERATE
 	else if (GetDirection() == Direction::down)
@@ -462,10 +517,12 @@ void Left()
         CPoint pfront = CPoint(SnakeBody.front().x - 1, SnakeBody.front().y);
 		CPoint pback = SnakeBody.back();
         if (AutoObstacle(pfront, pback)) return;
+        mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
         SnakeBody.push_front(pfront);
 		SnakeBody.pop_back();
+        mtx.unlock();
 	}
 #if ALLOWACCELERATE
 	else if (GetDirection() == Direction::left)
@@ -482,10 +539,12 @@ void Right()
 		CPoint pfront = CPoint(SnakeBody.front().x + 1, SnakeBody.front().y);
 		CPoint pback = SnakeBody.back();
         if (AutoObstacle(pfront, pback)) return;
+        mtx.lock();
 		*GetPointPtr(pfront) = SNAKE;
 		*GetPointPtr(pback) = NULL;
         SnakeBody.push_front(pfront);
 		SnakeBody.pop_back();
+        mtx.unlock();
 	}
 #if ALLOWACCELERATE
 	else if (GetDirection() == Direction::right)

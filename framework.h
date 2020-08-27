@@ -9,6 +9,7 @@
 #include <time.h>
 #include <deque>
 #include <thread>
+#include <mutex>
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS
 #define _AFX_ALL_WARNINGS
 
