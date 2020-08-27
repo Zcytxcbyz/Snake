@@ -443,7 +443,8 @@ bool AutoObstacle(CPoint front)
         int MBRESULT = MessageBox(NULL, str, _T("贪吃蛇"), MB_OK);
         if (MBRESULT == IDOK) 
         {
-            Reset();
+            std::thread t(Reset);
+            t.detach();
         }
         return true;
     }
